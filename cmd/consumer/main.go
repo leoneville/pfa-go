@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -26,6 +27,17 @@ func main() {
 	repository := database.NewOrderRepository(db)
 	uc := usecase.NewCalculateFinalPriceUseCase(repository)
 
+	http.HandleFunc("/total", func(w http.ResponseWriter, r *http.Request) {
+		uc := usecase.NewGetTotalUseCase(repository)
+		output, err := uc.Execute()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(output)
+	})
+	go http.ListenAndServe(":8181", nil)
+
 	ch, err := rabbitmq.OpenChannel()
 	if err != nil {
 		panic(err)
@@ -41,7 +53,6 @@ func main() {
 		go worker(out, uc, i)
 	}
 	wg.Wait()
-
 }
 
 func worker(deliveryMessage <-chan amqp.Delivery, uc *usecase.CalculateFinalPriceUseCase, workerId int) {
@@ -57,5 +68,6 @@ func worker(deliveryMessage <-chan amqp.Delivery, uc *usecase.CalculateFinalPric
 		}
 		msg.Ack(false)
 		fmt.Println("Worker", workerId, "Processed order", input.ID)
+		// time.Sleep(1 * time.Second)
 	}
 }

@@ -1,22 +1,10 @@
 package main
 
-import (
-	"fmt"
-	"sync"
-)
-
-func contador() {
-	for i := 0; i < 100; i++ {
-		fmt.Println(i)
-	}
-}
+import "net/http"
 
 func main() {
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		contador()
-	}()
-	wg.Wait()
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello, world!"))
+	})
+	http.ListenAndServe(":8080", nil)
 }
